@@ -351,19 +351,14 @@ export class ExtensionInstance<TConfiguration extends BaseConfigType = BaseConfi
       extension: this,
       options,
       stepResults: new Map(),
-      signal: options.signal,
     }
 
-    const steps = buildConfig.mode === 'none' ? [] : buildConfig.steps
+    const steps = buildConfig.steps ?? []
 
     for (const step of steps) {
       // eslint-disable-next-line no-await-in-loop
       const result = await executeStep(step, context)
       context.stepResults.set(step.id, result)
-
-      if (!result.success && !step.continueOnError) {
-        throw new Error(`Build step "${step.displayName}" failed: ${result.error?.message}`)
-      }
     }
   }
 

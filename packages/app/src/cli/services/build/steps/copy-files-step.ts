@@ -1,6 +1,8 @@
+import {getNestedValue} from './utils.js'
 import {joinPath, dirname, extname, relativePath, basename} from '@shopify/cli-kit/node/path'
 import {glob, copyFile, copyDirectoryContents, fileExists, mkdir} from '@shopify/cli-kit/node/fs'
 import {z} from 'zod'
+import type {BuildManifestStepOutput, ResolvedAsset, ResolvedAssets} from './build-manifest-step.js'
 import type {BuildStep, BuildContext} from '../build-steps.js'
 
 /**
@@ -38,6 +40,22 @@ const PatternDefinitionSchema = z.object({
 })
 
 /**
+ * manifest_result strategy definition.
+ *
+ * Reads a `BuildManifestStepOutput` from a previous step's result in the build context
+ * and copies all assets flagged `static: true` to the output directory.
+ * Each static asset's `module` field is the source path (relative to the extension
+ * directory) and its `filepath` field is the destination (relative to the output dir).
+ */
+const ManifestResultDefinitionSchema = z.object({
+  /**
+   * The `id` of the step whose manifest result to consume.
+   * Defaults to `'build-manifest'`.
+   */
+  stepId: z.string().default('build-manifest'),
+})
+
+/**
  * Configuration schema for copy_files step.
  * Discriminated by strategy; definition shape is tied to the chosen strategy.
  */
@@ -49,6 +67,10 @@ const CopyFilesConfigSchema = z.discriminatedUnion('strategy', [
   z.object({
     strategy: z.literal('pattern'),
     definition: PatternDefinitionSchema,
+  }),
+  z.object({
+    strategy: z.literal('manifest_result'),
+    definition: ManifestResultDefinitionSchema,
   }),
 ])
 
@@ -104,6 +126,10 @@ export async function executeCopyFilesStep(step: BuildStep, context: BuildContex
         definition.preserveStructure,
         options,
       )
+    }
+
+    case 'manifest_result': {
+      return copyStaticAssetsFromManifest(config.definition.stepId, outputDir, context)
     }
   }
 }
@@ -261,37 +287,70 @@ async function copyByPattern(
 }
 
 /**
- * Resolves a dot-separated path from a config object.
- * Handles TOML array-of-tables by plucking the next key across all elements.
+ * manifest_result strategy — copies all static assets from a previous step's manifest result.
+ *
+ * Reads the named step's output from `context.stepResults`, collects every asset
+ * with `static: true`, then copies each one from its `module` path (relative to the
+ * extension directory) to its `filepath` path (relative to the output directory).
+ *
+ * Assets without a `module` field are skipped — they are considered already in place.
+ * Both single-mode (`{assets}`) and forEach-mode (`{manifests}`) outputs are supported.
  */
-function getNestedValue(obj: {[key: string]: unknown}, path: string): unknown {
-  const parts = path.split('.')
-  let current: unknown = obj
+async function copyStaticAssetsFromManifest(
+  stepId: string,
+  outputDir: string,
+  context: BuildContext,
+): Promise<{filesCopied: number}> {
+  const stepResult = context.stepResults.get(stepId)
 
-  for (const part of parts) {
-    if (current === null || current === undefined) {
-      return undefined
-    }
-
-    if (Array.isArray(current)) {
-      const plucked = current
-        .map((item) => {
-          if (typeof item === 'object' && item !== null && part in (item as object)) {
-            return (item as {[key: string]: unknown})[part]
-          }
-          return undefined
-        })
-        .filter((item): item is NonNullable<unknown> => item !== undefined)
-      current = plucked.length > 0 ? plucked : undefined
-      continue
-    }
-
-    if (typeof current === 'object' && part in current) {
-      current = (current as {[key: string]: unknown})[part]
-    } else {
-      return undefined
-    }
+  if (!stepResult) {
+    throw new Error(`Step '${stepId}' not found in step results. Ensure the build_manifest step runs before this step.`)
   }
 
-  return current
+  if (!stepResult.success) {
+    throw new Error(`Step '${stepId}' didn't succeed — can't copy static assets from its manifest.`)
+  }
+
+  const output = stepResult.output as BuildManifestStepOutput
+  const staticAssets = collectStaticAssets(output)
+
+  if (staticAssets.length === 0) {
+    context.options.stdout.write('No static assets found in build manifest\n')
+    return {filesCopied: 0}
+  }
+
+  await Promise.all(
+    staticAssets.map(async (asset) => {
+      // Assets without a module path are not file-copy candidates
+      if (!asset.module) return
+      const sourcePath = joinPath(context.extension.directory, asset.module)
+      const destPath = joinPath(outputDir, asset.filepath)
+      await mkdir(dirname(destPath))
+      await copyFile(sourcePath, destPath)
+    }),
+  )
+
+  context.options.stdout.write(`Copied ${staticAssets.length} static asset(s) from build manifest\n`)
+  return {filesCopied: staticAssets.length}
+}
+
+/**
+ * Collects all assets with `static: true` from a BuildManifestStepOutput.
+ * Flattens both single-mode and forEach-mode output shapes.
+ */
+function collectStaticAssets(output: BuildManifestStepOutput): ResolvedAsset[] {
+  const allAssets: ResolvedAssets =
+    'assets' in output
+      ? output.assets
+      : output.manifests.reduce<ResolvedAssets>((acc, manifest) => ({...acc, ...manifest.build_manifest.assets}), {})
+
+  const result: ResolvedAsset[] = []
+  for (const value of Object.values(allAssets)) {
+    if (Array.isArray(value)) {
+      result.push(...value.filter((asset) => asset.static === true))
+    } else if (value.static === true) {
+      result.push(value)
+    }
+  }
+  return result
 }

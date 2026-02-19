@@ -25,6 +25,7 @@ export interface BuildStep {
   /** Step type (determines which executor handles it) */
   readonly type:
     | 'copy_files'
+    | 'build_manifest'
     | 'build_theme'
     | 'bundle_theme'
     | 'bundle_ui'
@@ -60,15 +61,12 @@ export interface BuildContext {
 
   /** Results from previous steps (for step dependencies) */
   readonly stepResults: Map<string, StepResult>
-
-  /** Custom data that steps can write to (extensible) */
-  [key: string]: unknown
 }
 
 /**
  * Result of a step execution
  */
-interface StepResult {
+export interface StepResult {
   readonly stepId: string
   readonly displayName: string
   readonly success: boolean

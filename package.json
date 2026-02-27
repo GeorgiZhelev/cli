@@ -130,7 +130,8 @@
       "@graphql-typed-document-node/core"
     ],
     "ignoreWorkspaces": [
-      "packages/eslint-plugin-cli"
+      "packages/eslint-plugin-cli",
+      "packages/e2e"
     ],
     "paths": {
       "@shopify/eslint-plugin-cli/configs": [

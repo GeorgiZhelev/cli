@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import {envFixture, executables} from './env.js'
 import {stripAnsi} from '../helpers/strip-ansi.js'
 import {execa, type Options as ExecaOptions} from 'execa'

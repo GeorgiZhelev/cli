@@ -28,6 +28,15 @@ interface ThemeInfoOptions {
   json?: boolean
 }
 
+interface DevInfo {
+  store: string
+  development_theme_id: string | null
+  cli_version: string
+  os: string
+  shell: string
+  node_version: string
+}
+
 export function themeInfoJSON(theme: Theme, adminSession: AdminSession): ThemeInfo {
   return {
     theme: {
@@ -38,6 +47,19 @@ export function themeInfoJSON(theme: Theme, adminSession: AdminSession): ThemeIn
       preview_url: themePreviewUrl(theme, adminSession),
       editor_url: themeEditorUrl(theme, adminSession),
     },
+  }
+}
+
+export function devInfoJSON(config: {cliVersion: string}): DevInfo {
+  const {platform, arch} = platformAndArch()
+  const store = getThemeStore()
+  return {
+    store: store ?? 'Not configured',
+    development_theme_id: store ? getDevelopmentTheme() ?? null : null,
+    cli_version: config.cliVersion,
+    os: `${platform}-${arch}`,
+    shell: process.env.SHELL ?? 'unknown',
+    node_version: process.version,
   }
 }
 

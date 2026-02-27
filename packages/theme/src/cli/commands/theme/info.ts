@@ -1,5 +1,5 @@
 import {themeFlags} from '../../flags.js'
-import {fetchThemeInfo, fetchDevInfo, formatThemeInfo} from '../../services/info.js'
+import {fetchThemeInfo, fetchDevInfo, formatThemeInfo, devInfoJSON} from '../../services/info.js'
 import ThemeCommand from '../../utilities/theme-command.js'
 import {Flags} from '@oclif/core'
 import {AdminSession} from '@shopify/cli-kit/node/session'
@@ -50,6 +50,9 @@ export default class Info extends ThemeCommand {
       renderInfo(formattedInfo)
     } else {
       const infoMessage = await fetchDevInfo({cliVersion: this.config.version})
+      if (flags.json) {
+        return outputResult(JSON.stringify(devInfoJSON({cliVersion: this.config.version}), null, 2))
+      }
       renderInfo({customSections: infoMessage})
     }
     recordTiming('theme-command:info')

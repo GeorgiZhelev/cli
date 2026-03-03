@@ -134,7 +134,8 @@ let authMethod: AuthMethod = 'none'
 export async function getLastSeenUserIdAfterAuth(): Promise<string> {
   if (userId) return userId
 
-  const currentSessionId = getCurrentSessionId()
+  const fqdn = await identityFqdn()
+  const currentSessionId = getCurrentSessionId(fqdn)
   if (currentSessionId) return currentSessionId
 
   const customToken = getPartnersToken() ?? themeToken()
@@ -160,7 +161,8 @@ export function setLastSeenUserIdAfterAuth(id: string) {
 export async function getLastSeenAuthMethod(): Promise<AuthMethod> {
   if (authMethod !== 'none') return authMethod
 
-  if (getCurrentSessionId()) return 'device_auth'
+  const fqdn = await identityFqdn()
+  if (getCurrentSessionId(fqdn)) return 'device_auth'
 
   const partnersToken = getPartnersToken()
   if (partnersToken) return 'partners_token'
@@ -208,7 +210,7 @@ export async function ensureAuthenticated(
 
   const sessions = (await sessionStore.fetch()) ?? {}
 
-  let currentSessionId = getCurrentSessionId()
+  let currentSessionId = getCurrentSessionId(fqdn)
   if (!currentSessionId) {
     const userIds = Object.keys(sessions[fqdn] ?? {})
     if (userIds.length > 0) currentSessionId = userIds[0]
@@ -258,7 +260,7 @@ ${outputToken.json(applications)}
   // Save the new session info if it has changed
   if (!isEmpty(newSession)) {
     await sessionStore.store(updatedSessions)
-    setCurrentSessionId(newSessionId)
+    setCurrentSessionId(fqdn, newSessionId)
   }
 
   const tokens = await tokensFor(applications, completeSession)

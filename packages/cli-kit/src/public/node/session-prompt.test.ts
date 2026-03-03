@@ -96,7 +96,7 @@ describe('promptSessionSelect', () => {
         {label: 'Log in with a different account', value: 'NEW_LOGIN'},
       ],
     })
-    expect(setCurrentSessionId).toHaveBeenCalledWith('user1')
+    expect(setCurrentSessionId).toHaveBeenCalledWith('identity.fqdn.com', 'user1')
     expect(result).toEqual('Work Account')
   })
 
@@ -133,7 +133,7 @@ describe('promptSessionSelect', () => {
         {label: 'Log in with a different account', value: 'NEW_LOGIN'},
       ],
     })
-    expect(setCurrentSessionId).toHaveBeenCalledWith('user3')
+    expect(setCurrentSessionId).toHaveBeenCalledWith('identity.fqdn.com', 'user3')
     expect(result).toEqual('user3')
   })
 
@@ -175,7 +175,7 @@ describe('promptSessionSelect', () => {
     const result = await promptSessionSelect()
 
     // Then
-    expect(setCurrentSessionId).toHaveBeenCalledWith('user1')
+    expect(setCurrentSessionId).toHaveBeenCalledWith('identity.fqdn.com', 'user1')
     expect(result).toEqual('Work Account')
   })
 
@@ -189,7 +189,7 @@ describe('promptSessionSelect', () => {
 
     // Then
     expect(sessionStore.findSessionByAlias).toHaveBeenCalledWith('Work Account')
-    expect(setCurrentSessionId).toHaveBeenCalledWith('user1')
+    expect(setCurrentSessionId).toHaveBeenCalledWith('identity.fqdn.com', 'user1')
     expect(renderSelectPrompt).not.toHaveBeenCalled()
     expect(ensureAuthenticatedUser).not.toHaveBeenCalled()
     expect(result).toEqual('Work Account')
@@ -207,7 +207,7 @@ describe('promptSessionSelect', () => {
     // Then
     expect(sessionStore.findSessionByAlias).toHaveBeenCalledWith('Non-existent Alias')
     expect(renderSelectPrompt).toHaveBeenCalled()
-    expect(setCurrentSessionId).toHaveBeenCalledWith('user2')
+    expect(setCurrentSessionId).toHaveBeenCalledWith('identity.fqdn.com', 'user2')
     expect(result).toEqual('user2')
   })
 })

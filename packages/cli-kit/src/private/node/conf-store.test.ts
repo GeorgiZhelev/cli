@@ -68,27 +68,41 @@ describe('removeSession', () => {
 })
 
 describe('getCurrentSessionId', () => {
-  test('returns the content of the currentSessionId key', async () => {
+  test('returns the session ID for a given fqdn', async () => {
     await inTemporaryDirectory(async (cwd) => {
       // Given
       const config = new LocalStorage<ConfSchema>({cwd})
-      config.set('currentSessionId', 'user-123')
+      config.set('currentSessionIds', {'accounts.shopify.com': 'user-123'})
 
       // When
-      const got = getCurrentSessionId(config)
+      const got = getCurrentSessionId('accounts.shopify.com', config)
 
       // Then
       expect(got).toEqual('user-123')
     })
   })
 
-  test('returns undefined when currentSessionId is not set', async () => {
+  test('returns undefined for a fqdn with no session', async () => {
+    await inTemporaryDirectory(async (cwd) => {
+      // Given
+      const config = new LocalStorage<ConfSchema>({cwd})
+      config.set('currentSessionIds', {'accounts.shopify.com': 'user-123'})
+
+      // When
+      const got = getCurrentSessionId('identity.local.dev', config)
+
+      // Then
+      expect(got).toBeUndefined()
+    })
+  })
+
+  test('returns undefined when currentSessionIds is not set', async () => {
     await inTemporaryDirectory(async (cwd) => {
       // Given
       const config = new LocalStorage<ConfSchema>({cwd})
 
       // When
-      const got = getCurrentSessionId(config)
+      const got = getCurrentSessionId('accounts.shopify.com', config)
 
       // Then
       expect(got).toBeUndefined()
@@ -97,32 +111,52 @@ describe('getCurrentSessionId', () => {
 })
 
 describe('setCurrentSessionId', () => {
-  test('saves the desired content in the currentSessionId key', async () => {
+  test('saves session ID scoped to a fqdn', async () => {
     await inTemporaryDirectory(async (cwd) => {
       // Given
       const config = new LocalStorage<ConfSchema>({cwd})
 
       // When
-      setCurrentSessionId('user-456', config)
+      setCurrentSessionId('accounts.shopify.com', 'user-456', config)
 
       // Then
-      expect(config.get('currentSessionId')).toEqual('user-456')
+      expect(config.get('currentSessionIds')).toEqual({'accounts.shopify.com': 'user-456'})
+    })
+  })
+
+  test('preserves session IDs for other environments', async () => {
+    await inTemporaryDirectory(async (cwd) => {
+      // Given
+      const config = new LocalStorage<ConfSchema>({cwd})
+      setCurrentSessionId('accounts.shopify.com', 'user-prod', config)
+
+      // When
+      setCurrentSessionId('identity.local.dev', 'user-local', config)
+
+      // Then
+      expect(config.get('currentSessionIds')).toEqual({
+        'accounts.shopify.com': 'user-prod',
+        'identity.local.dev': 'user-local',
+      })
     })
   })
 })
 
 describe('removeCurrentSessionId', () => {
-  test('removes the currentSessionId key', async () => {
+  test('removes all current session IDs', async () => {
     await inTemporaryDirectory(async (cwd) => {
       // Given
       const config = new LocalStorage<ConfSchema>({cwd})
-      config.set('currentSessionId', 'user-789')
+      config.set('currentSessionIds', {
+        'accounts.shopify.com': 'user-123',
+        'identity.local.dev': 'user-456',
+      })
 
       // When
       removeCurrentSessionId(config)
 
       // Then
-      expect(config.get('currentSessionId')).toBeUndefined()
+      expect(config.get('currentSessionIds')).toBeUndefined()
     })
   })
 })

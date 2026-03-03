@@ -27,7 +27,7 @@ interface Cache {
 
 export interface ConfSchema {
   sessionStore: string
-  currentSessionId?: string
+  currentSessionIds?: Record<string, string>
   cache?: Cache
 }
 
@@ -74,31 +74,43 @@ export function removeSessions(config: LocalStorage<ConfSchema> = cliKitStore())
 }
 
 /**
- * Get current session ID.
+ * Get current session ID for a given identity FQDN.
  *
- * @returns Current session ID.
+ * @param fqdn - The identity FQDN to get the session ID for.
+ * @returns Current session ID for that environment.
  */
-export function getCurrentSessionId(config: LocalStorage<ConfSchema> = cliKitStore()): string | undefined {
-  outputDebug(outputContent`Getting current session ID...`)
-  return config.get('currentSessionId')
+export function getCurrentSessionId(
+  fqdn: string,
+  config: LocalStorage<ConfSchema> = cliKitStore(),
+): string | undefined {
+  outputDebug(outputContent`Getting current session ID for ${fqdn}...`)
+  const sessionIds = config.get('currentSessionIds')
+  return sessionIds?.[fqdn]
 }
 
 /**
- * Set current session ID.
+ * Set current session ID for a given identity FQDN.
  *
+ * @param fqdn - The identity FQDN to set the session ID for.
  * @param sessionId - Session ID.
  */
-export function setCurrentSessionId(sessionId: string, config: LocalStorage<ConfSchema> = cliKitStore()): void {
-  outputDebug(outputContent`Setting current session ID...`)
-  config.set('currentSessionId', sessionId)
+export function setCurrentSessionId(
+  fqdn: string,
+  sessionId: string,
+  config: LocalStorage<ConfSchema> = cliKitStore(),
+): void {
+  outputDebug(outputContent`Setting current session ID for ${fqdn}...`)
+  const sessionIds = config.get('currentSessionIds') ?? {}
+  sessionIds[fqdn] = sessionId
+  config.set('currentSessionIds', sessionIds)
 }
 
 /**
- * Remove current session ID.
+ * Remove all current session IDs (across all environments).
  */
 export function removeCurrentSessionId(config: LocalStorage<ConfSchema> = cliKitStore()): void {
-  outputDebug(outputContent`Removing current session ID...`)
-  config.delete('currentSessionId')
+  outputDebug(outputContent`Removing current session IDs...`)
+  config.delete('currentSessionIds')
 }
 
 type CacheValueForKey<TKey extends keyof Cache> = NonNullable<Cache[TKey]>['value']

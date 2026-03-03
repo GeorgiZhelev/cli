@@ -80,10 +80,12 @@ async function getAllChoices(): Promise<SessionChoice[]> {
  * @returns Promise with the alias of the chosen session.
  */
 export async function promptSessionSelect(alias?: string): Promise<string> {
+  const fqdn = await identityFqdn()
+
   if (alias) {
     const userId = await sessionStore.findSessionByAlias(alias)
     if (userId) {
-      setCurrentSessionId(userId)
+      setCurrentSessionId(fqdn, userId)
       return alias
     }
   }
@@ -100,6 +102,6 @@ export async function promptSessionSelect(alias?: string): Promise<string> {
     return handleNewLogin()
   }
 
-  setCurrentSessionId(selectedValue)
+  setCurrentSessionId(fqdn, selectedValue)
   return choices.find((choice) => choice.value === selectedValue)?.label ?? selectedValue
 }
